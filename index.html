@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to JPG</title>
+</head>
+<body>
+
+  <script type="text/javascript" src="https://unpkg.com/pdf-lib"></script>
+  <script type="text/javascript">
+    async function extractPagesFromPDF(pdfBytes) {
+      const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+      
+      // Extract pages containing the text "PAGE 1 of"
+      const matchingPages = [];
+      for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+        const page = pdfDoc.getPage(i);
+        const text = await page.getText();
+        
+        if (text.includes("PAGE 1 of")) {
+          matchingPages.push(page);
+        }
+      }
+
+      // Convert matching pages to JPG
+      const jpgBytesArray = [];
+      for (const page of matchingPages) {
+        const jpgBytes = await page.asPng();
+        jpgBytesArray.push(jpgBytes);
+      }
+
+      // Handle jpgBytesArray as needed (e.g., save to server, display images, etc.)
+      console.log(jpgBytesArray);
+    }
+
+    // Example usage with a PDF file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf';
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfBytes = new Uint8Array(arrayBuffer);
+      
+      extractPagesFromPDF(pdfBytes);
+    });
+
+    document.body.appendChild(fileInput);
+  </script>
+
+</body>
+</html>
