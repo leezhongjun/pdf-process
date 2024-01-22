@@ -30,8 +30,15 @@
         jpgBytesArray.push(jpgBytes);
       }
 
-      // Handle jpgBytesArray as needed (e.g., save to server, display images, etc.)
-      console.log(jpgBytesArray);
+      // Create downloadable links for each JPG file
+      for (let i = 0; i < jpgBytesArray.length; i++) {
+        const jpgBlob = new Blob([jpgBytesArray[i]], { type: 'image/png' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(jpgBlob);
+        link.download = `page_${i + 1}.jpg`;
+        link.textContent = `Download Page ${i + 1}`;
+        document.body.appendChild(link);
+      }
     }
 
     // Example usage with a PDF file input
