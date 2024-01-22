@@ -1,60 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDF to JPG</title>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF to JPG with Text Filter</title>
+    <script src="pdfjs/build"></script>
+    <script src="pdf.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+      integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="http://cdn.jsdelivr.net/g/filesaver.js"></script>
+  </head>
+  <body>
+    <h1>PDF to JPG with Text Filter</h1>
+    Text to filter
+    <input type="text" id="filter" placeholder="Filter" value="PAGE 1 OF" />
+    <input type="file" id="fileInput" accept=".pdf" />
+    <button onclick="convertPdfToJpg()">Convert to JPG</button>
 
-  <script type="text/javascript" src="https://unpkg.com/pdf-lib"></script>
-  <script type="text/javascript">
-    async function extractPagesFromPDF(pdfBytes) {
-      const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-      
-      // Extract pages containing the text "PAGE 1 of"
-      const matchingPages = [];
-      for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-        const page = pdfDoc.getPage(i);
-        const text = await page.getText();
-        
-        if (text.includes("PAGE 1 of")) {
-          matchingPages.push(page);
+    <script type="text/javascript">
+      JSZip = window.JSZip;
+      FileSaver = window.FileSaver;
+      // Initialize PDF.js
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js";
+
+      function convertPdfToJpg() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Please select a PDF file.");
+          return;
         }
+
+        const fileReader = new FileReader();
+
+        fileReader.onload = async function (event) {
+          // load pdf
+          const typedArray = new Uint8Array(event.target.result);
+          const pdf = await pdfjsLib.getDocument(typedArray).promise;
+          console.log(pdf);
+          // Extract pages that contain "flop"
+          const pages = [];
+          const filenames = [];
+          const filter = document.getElementById("filter").value;
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const text = textContent.items.map((item) => item.str).join(" ");
+            if (text.includes(filter)) {
+              pages.push(page);
+              // find the 5 character string after "COY PLT SECT: "
+              const index = text.indexOf("COY PLT SECT: ");
+              const str = text.substring(index + 14, index + 19);
+              // coy is first character
+              const coy = str[0];
+              //plt is string(int(second and third character))
+              const plt = parseInt(str.substring(1, 3));
+              //sect is string(int(fourth and fifth character))
+              const sect = parseInt(str.substring(3, 5));
+              filename = `${coy}_P${plt}S${sect}.jpg`;
+              filenames.push(filename);
+            }
+          }
+          console.log(pages);
+          // save pages as jpg files
+          // download as zip
+          const zip = new JSZip();
+          for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const viewport = page.getViewport({ scale: 1.0 });
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            const renderContext = {
+              canvasContext: context,
+              viewport: viewport,
+            };
+            await page.render(renderContext).promise;
+            const image = canvas.toDataURL("image/jpeg");
+            zip.file(filenames[i], image.split("base64,")[1], {
+              base64: true,
+            });
+          }
+          // create download lip for zip
+          zip.generateAsync({ type: "blob" }).then(function (content) {
+            // see FileSaver.js
+            saveAs(content, "example.zip");
+          });
+        };
+
+        fileReader.readAsArrayBuffer(file);
       }
-
-      // Convert matching pages to JPG
-      const jpgBytesArray = [];
-      for (const page of matchingPages) {
-        const jpgBytes = await page.asPng();
-        jpgBytesArray.push(jpgBytes);
-      }
-
-      // Create downloadable links for each JPG file
-      for (let i = 0; i < jpgBytesArray.length; i++) {
-        const jpgBlob = new Blob([jpgBytesArray[i]], { type: 'image/png' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(jpgBlob);
-        link.download = `page_${i + 1}.jpg`;
-        link.textContent = `Download Page ${i + 1}`;
-        document.body.appendChild(link);
-      }
-    }
-
-    // Example usage with a PDF file input
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.pdf';
-    fileInput.addEventListener('change', async (event) => {
-      const file = event.target.files[0];
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfBytes = new Uint8Array(arrayBuffer);
-      
-      extractPagesFromPDF(pdfBytes);
-    });
-
-    document.body.appendChild(fileInput);
-  </script>
-
-</body>
+    </script>
+  </body>
 </html>
