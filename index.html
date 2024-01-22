@@ -17,7 +17,14 @@
   <body>
     <h1>PDF to JPG with Text Filter</h1>
     Text to filter
-    <input type="text" id="filter" placeholder="Filter" value="PAGE 1 OF" />
+    <input type="text" id="filter" placeholder="Filter" value="PAGE 1 " />
+    <br />
+    <input
+      type="text"
+      id="filenamePrefix"
+      placeholder="Filename prefix"
+      value="COY PLT SECT: "
+    />
     <input type="file" id="fileInput" accept=".pdf" />
     <button onclick="convertPdfToJpg()">Convert to JPG</button>
 
@@ -44,7 +51,7 @@
           const typedArray = new Uint8Array(event.target.result);
           const pdf = await pdfjsLib.getDocument(typedArray).promise;
           console.log(pdf);
-          // Extract pages that contain "flop"
+          // Extract pages that contain filter word
           const pages = [];
           const filenames = [];
           const filter = document.getElementById("filter").value;
@@ -55,14 +62,19 @@
             if (text.includes(filter)) {
               pages.push(page);
               // find the 5 character string after "COY PLT SECT: "
-              const index = text.indexOf("COY PLT SECT: ");
+              const prefix = document.getElementById("filenamePrefix").value;
+              var index = text.indexOf(prefix);
+              // if not found, use "COY PLT SECT : "
+              if (index === -1) {
+                index = text.indexOf("COY PLT SECT : ");
+              }
               const str = text.substring(index + 14, index + 19);
               // coy is first character
               const coy = str[0];
               //plt is string(int(second and third character))
-              const plt = parseInt(str.substring(1, 3));
+              const plt = i + 1;
               //sect is string(int(fourth and fifth character))
-              const sect = parseInt(str.substring(3, 5));
+              const sect = (i % 4) + 1;
               filename = `${coy}_P${plt}S${sect}.jpg`;
               filenames.push(filename);
             }
